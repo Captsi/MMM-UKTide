@@ -88,7 +88,7 @@ Module.register("MMM-UKTide", {
 
 		if (this.config.feedUrl) {
 			wrapper.className = "small bright";
-			wrapper.innerHTML = this.translate("MODULE_CONFIG_CHANGED", { MODULE_NAME: "Newsfeed" });
+			wrapper.innerHTML = this.translate("MODULE_CONFIG_CHANGED", { MODULE_NAME: "MMM-UKTide" });
 			return wrapper;
 		}
 
