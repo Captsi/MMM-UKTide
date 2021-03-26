@@ -78,5 +78,47 @@ module.exports = NodeHelper.create({
 			feeds[f] = this.fetchers[f].items();
 		}
 		this.sendSocketNotification("NEWS_ITEMS", feeds);
+	},
+	
+
+	getData: function() {
+		var self = this;
+
+		this.sendSocketNotification("Test", 2);
+						
+		
+		request({
+			url: "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=1", 
+//			+ this.config.lat + "&start_longitude=" + this.config.lng,
+			method: 'GET',
+			headers: {
+			'Host': 'admiraltyapi.azure-api.net',
+			'Ocp-Apim-Subscription-Key':'515a75514aee4a07837db6d60bc10e41',
+		        'Content-Type': 'application/json'
+		    		},
+			}, 
+			function (error, response, body) {
+			
+			if (!error && response.statusCode == 200) {
+				self.sendSocketNotification("TIME", body);
+			}
+			else {
+				self.sendSocketNotification("ERROR", "In TIME request with status code: " + response.statusCode);
+			}
+		});
+
+
+		setTimeout(function() { self.getData(); }, this.config.updateInterval);
+		
+	},
+
+	socketNotificationReceived: function(notification, payload) {
+		//var self = this;
+		this.sendSocketNotification("Test", 0);
+		if (notification === 'CONFIG') {
+			this.sendSocketNotification("Test", 1);
+			this.config = payload;
+			this.getData();
+		}
 	}
 });
