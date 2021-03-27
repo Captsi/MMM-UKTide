@@ -5,18 +5,19 @@
  */
 
 
-.MMM-SORT .header {
+.MMM-UKTide .header {
   color: white;               /* Color the header text. Default is white. */
   text-align: left;           /* Align the header text. (left, center, right) */
 }
 
-.MMM-SORT .dt {
+.MMM-UKTide .dt {
   color: white;               /* Color the date and time text. Default is white. */
   text-align: left;           /* Align the date and time text. (left, center, right) */
+  font-size: 24px;
     padding: 4px;
 }
 
-.MMM-SORT .type {
+.MMM-UKTide .type {
   color: white                /* Color the High/Low tide. Default is white. */
   text-align: left;           /* Align the High/Low tide. (left, center, right) */
     padding: 4px;
@@ -25,6 +26,7 @@
 
 .MMM-UKTide .img {
   margin-bottom: -4px;        /* Centers icon between lines. */
+  text-align: left;
 }
 
 .MMM-UKTide .height {
@@ -50,8 +52,10 @@
 
 .MMM-UKTide .date {
   padding: 4px;
+  font-size: 24px;
 }
 
 .MMM-UKTide .date2 {
   padding: 4px;
+  font-size: 24px;
 }
