@@ -5,7 +5,7 @@ In your terminal, go to your MagicMirror's Module folder:
 cd ~/MagicMirror/modules
 Clone this repository:
 
-git clone https://github.com/bibaldo/MMM-COVID19.git
+git clone https://github.com/Captsi/MMM-UKTide.git
 Add the module to the modules array in the config/config.js file:
 
 {
