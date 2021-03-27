@@ -10,6 +10,7 @@ Module.register("MMM-UKTide", {
     // Module config defaults.
     defaults: {
         apiKey: "",                     // admiralty
+        AdmiraltyKey: "",
         mode: "static",                 // static or rotating
         timeFormat: "",
         height: "m",                    // ft = feet, m = meters for tide height
@@ -17,8 +18,9 @@ Module.register("MMM-UKTide", {
         HighText: "High",               // High tide text. Whatever you want or nothing ""
         useHeader: false,               // False if you don't want a header
         header: "",                     // Change in config file. useHeader must be true
-        maxWidth: "300px",
+        maxWidth: "380px",
         animationSpeed: 3000,           // fade speed
+        fadeSpeed: 4000, 
         initialLoadDelay: 3250,
         retryDelay: 2500,
         rotateInterval: 30 * 1000,      // seconds
@@ -35,18 +37,30 @@ Module.register("MMM-UKTide", {
 
     start: function() {
         Log.info("Starting module: " + this.name);
-
+        this.getInfo()
 
         //  Set locale.
 //        this.url = "https://www.worldtides.info/api?extremes&lat=" + this.config.lat + "&lon=" + this.config.lon + "&length=604800&key=" + this.config.apiKey;
-	this.url = "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=1";
+	    this.url = "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=3";
         this.tides = [];
         this.activeItem = 0;
         this.rotateInterval = null;
         this.scheduleUpdate();
     },
 
+    getInfo: function () {
+        this.sendSocketNotification('GET_TIDES', this.config.AdmiraltyKey)
+      },
 
+    socketNotificationReceived: function(notification, payload) {
+        var self = this
+        if (notification === "TIDAL_RESULT") {
+          this.tides = payload
+          this.updateDom(self.config.fadeSpeed)
+        }
+       
+      },
+    
     getDom: function() {
 
 		// create wrapper
@@ -56,7 +70,7 @@ Module.register("MMM-UKTide", {
 
 		// Loading
         if (!this.loaded) {
-            wrapper.innerHTML = "First the tide rushes in . . .";
+            wrapper.innerHTML = "Its not sorted yet . . . .";
             wrapper.classList.add("bright", "light", "small");
             return wrapper;
         }
@@ -98,32 +112,32 @@ Module.register("MMM-UKTide", {
             var dt = document.createElement("div");
             dt.classList.add("small", "bright", "dt");
             //	console.log(tides) // for checking
-            dt.innerHTML = moment.utc(tides.dt * 1000).local().format("dddd, MMM DD, YYYY"); // Stackoverflow.com
+            dt.innerHTML = moment.utc(tides.DateTime).local().format("dddd, MMM DD, YYYY"); // Stackoverflow.com
             wrapper.appendChild(dt);
 
 
             // type = High or Low tide, icon AND time
-            var type = document.createElement("div");
-            type.classList.add("small", "bright", "type");
-        if (tides.type == "Low") {
-                type.innerHTML = tides.type + " tide" + " &nbsp " + " <img class = img src=modules/MMM-SORT/images/low.png width=10% height=10%>" + " &nbsp " + moment.utc(tides.dt * 1000).local().format(this.config.timeFormat);
+            var EventType = document.createElement("div");
+            EventType.classList.add("small", "bright", "EventType");
+        if (tides.EventType == "LowWater") {
+            EventType.innerHTML = tides.EventType + " tide" + " &nbsp " + " <img class = img src=modules/MMM-SORT/images/low.png width=10% height=10%>" + " &nbsp " + moment.utc(tides.DateTime).local().format(this.config.timeFormat);
         } else {
-                type.innerHTML = tides.type + " tide" + " &nbsp " + " <img class = img src=modules/MMM-SORT/images/high.png width=10% height=10%>" + " &nbsp " + moment.utc(tides.dt * 1000).local().format(this.config.timeFormat);
+            EventType.innerHTML = tides.EventType + " tide" + " &nbsp " + " <img class = img src=modules/MMM-SORT/images/high.png width=10% height=10%>" + " &nbsp " + moment.utc(tides.DateTime).local().format(this.config.timeFormat);
             }
-            wrapper.appendChild(type);
+            wrapper.appendChild(EventType);
 
 
             // height of tide variance (round to two decimals for ft, m is three decimals)
             var height = document.createElement("div");
             height.classList.add("small", "bright", "height");
         if (this.config.height == "ft") {
-                height.innerHTML = "Tidal variance is " + Number(Math.round(tides.height * 3.28 + 'e2') + 'e-2') + " ft"; // https://jsfiddle.net/k5tpq3pd/36/
+                height.innerHTML = "Tidal variance is " + Number(Math.round(tides.Height * 3.28 + 'e2') + 'e-2') + " ft"; // https://jsfiddle.net/k5tpq3pd/36/
         } else {
-                height.innerHTML = "Tidal variance is " + tides.height + " meters";
+                height.innerHTML = "Tidal variance is " + tides.Height + " meters";
             }
             wrapper.appendChild(height);
 
-
+/*
             // Tide station nearest to config lat and lon
             var station = document.createElement("div");
             station.classList.add("small", "bright", "station");
@@ -136,7 +150,7 @@ Module.register("MMM-UKTide", {
             latLon.classList.add("small", "bright", "latLon");
             latLon.innerHTML = "Tide station " + this.respLat + ", " + this.respLon;
             wrapper.appendChild(latLon);
-
+*/
         }
 
         ////////////////// ELSE - the static data //////////////
@@ -153,11 +167,11 @@ Module.register("MMM-UKTide", {
 
 
         // place
-        var place = document.createElement("div");
+/*        var place = document.createElement("div");
         place.classList.add("small", "bright", "place");
         place.innerHTML = this.station;
         top.appendChild(place);
-
+*/
 
         // Tide #1 = High/Low icon, day of the week, time of tide (am/pm)
         var date = document.createElement("div");
@@ -168,14 +182,14 @@ Module.register("MMM-UKTide", {
 
 
 		// IF time NOW is later than epoch time of tide, dim this tide
-		if (Date.now() > (tides[0].dt * 1000) ) {
+		if (Date.now() > Date.parse(tides[0].DateTime) ) {
 				 date.classList.add("xsmall", "dimmed", "date");
 		} else { date.classList.add("xsmall", "bright", "date");
 	}
-		if (tides[0].type == "LowWater") {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[0].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[0].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>"; // Stackoverflow.com
+		if (tides[0].EventType == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[0].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[0].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" + " &nbsp (" + tides[0].Height.toFixed(2) + "m)"; // Stackoverflow.com
         } else {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[0].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[0].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[0].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[0].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>" + " &nbsp (" + tides[0].Height.toFixed(2) + "m)"; // Stackoverflow.com
         }
 
 		top.appendChild(date);
@@ -184,33 +198,45 @@ Module.register("MMM-UKTide", {
 
 		// Tide #2 = High/Low icon, day of the week, time of tide (am/pm)
         var date2 = document.createElement("div");
-        date2.classList.add("xsmall", "bright", "date2");
-		if (tides[1].type == "LowWater") {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[1].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[1].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        if (Date.now() > Date.parse(tides[1].DateTime) ) {
+            date2.classList.add("xsmall", "dimmed", "date2");
+   } else { date2.classList.add("xsmall", "bright", "date2");
+} 
+		if (tides[1].EventType == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[1].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[1].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" + " &nbsp (" + tides[1].Height.toFixed(2) + "m)"; // Stackoverflow.com
         } else {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[1].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[1].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[1].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[1].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>" + " &nbsp (" + tides[1].Height.toFixed(2) + "m)"; // Stackoverflow.com
         }
 		top.appendChild(date2);
 
 
 		// Tide #3 = High/Low icon, day of the week, time of tide (am/pm)
         var date = document.createElement("div");
-        date.classList.add("xsmall", "bright", "date");
-		if (tides[2].type == "LowWater") {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[2].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[2].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        if (Date.now() > Date.parse(tides[2].DateTime) ) {
+            date.classList.add("xsmall", "dimmed", "date");
+   } else { date.classList.add("xsmall", "bright", "date");
+}
+ //       date.classList.add("xsmall", "bright", "date");
+		if (tides[2].EventType == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[2].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[2].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" + " &nbsp (" + tides[2].Height.toFixed(2) + "m)"; // Stackoverflow.com
         } else {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[2].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[2].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[2].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[2].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>" + " &nbsp (" + tides[2].Height.toFixed(2) + "m)"; // Stackoverflow.com
         }
 		top.appendChild(date);
 
 
 		// Tide #4 = High/Low icon, day of the week, time of tide (am/pm)
         var date2 = document.createElement("div");
-        date2.classList.add("xsmall", "bright", "date2");
-		if (tides[3].type == "LowWater") {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[3].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[3].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        if (Date.now() > Date.parse(tides[3].DateTime) ) {
+            date2.classList.add("xsmall", "dimmed", "date2");
+   } else { date2.classList.add("xsmall", "bright", "date2");
+} 
+
+//        date2.classList.add("xsmall", "bright", "date2");
+		if (tides[3].EventType == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[3].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[3].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" + " &nbsp (" + tides[3].Height.toFixed(2) + "m)"; // Stackoverflow.com
         } else {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[3].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[3].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[3].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[3].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>" + " &nbsp (" + tides[3].Height.toFixed(2) + "m)"; // Stackoverflow.com
         }
 		top.appendChild(date2);
 
@@ -218,10 +244,10 @@ Module.register("MMM-UKTide", {
 		// Tide #5 = High/Low icon, day of the week, time of tide (am/pm)
         var date = document.createElement("div");
         date.classList.add("xsmall", "bright", "date");
-		if (tides[4].type == "LowWater") {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[4].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[4].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+		if (tides[4].EventType == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[4].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[4].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" + " &nbsp (" + tides[4].Height.toFixed(2) + "m)"; // Stackoverflow.com
         } else {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[4].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[4].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[4].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[4].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>" + " &nbsp (" + tides[4].Height.toFixed(2) + "m)"; // Stackoverflow.com
         }
 		top.appendChild(date);
 
@@ -229,21 +255,21 @@ Module.register("MMM-UKTide", {
 		// Tide #6 = High/Low icon, day of the week, time of tide (am/pm)
         var date2 = document.createElement("div");
         date2.classList.add("xsmall", "bright", "date2");
-		if (tides[5].type == "LowWater") {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[5].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[5].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+		if (tides[5].EventType == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[5].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[5].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" + " &nbsp (" + tides[5].Height.toFixed(2) + "m)"; // Stackoverflow.com
         } else {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[5].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[5].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=6% height=6%>" + " &nbsp " + moment.utc(tides[5].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[5].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>" + " &nbsp (" + tides[5].Height.toFixed(2) + "m)"; // Stackoverflow.com
         }
 		top.appendChild(date2);
 
-
+/*
 		// Tide #7 = High/Low icon, day of the week, time of tide (am/pm)
         var date = document.createElement("div");
         date.classList.add("xsmall", "bright", "date");
-		if (tides[6].type == "LowWater") {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[6].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[6].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+		if (tides[6].EventType == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[6].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[6].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
         } else {
-            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[6].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[6].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[6].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[6].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
         }
 		top.appendChild(date);
 
@@ -251,13 +277,13 @@ Module.register("MMM-UKTide", {
 		// Tide #8 = High/Low icon, day of the week, time of tide (am/pm)
         var date2 = document.createElement("div");
         date2.classList.add("xsmall", "bright", "date2");
-		if (tides[7].type == "LowWater") {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[7].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[7].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+		if (tides[7].EventType == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[7].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[7].DateTime).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
         } else {
-            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[7].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[7].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[7].DateTime).local().format("ddd") + " &nbsp" + moment.utc(tides[7].DateTime).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
         }
 		top.appendChild(date2);
-
+*/
         wrapper.appendChild(top);
 
 		} // closes else
@@ -310,7 +336,7 @@ Module.register("MMM-UKTide", {
     },
 
     socketNotificationReceived: function(notification, payload) {
-        if (notification === "TIDES_RESULT") {
+        if (notification === "TIDAL_RESULT") { 
             this.processTides(payload);
             if (this.config.mode != 'static' && this.rotateInterval == null) {   // if you want static it will return false and will not try to run
             //these statements BOTH have to be true to run... if one is false the other true it will not run. Huge props to Cowboysdude for this!!!
