@@ -11,22 +11,21 @@
 var NodeHelper = require('node_helper')
 var request = require('request')
 
-			url: "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=1", 
-
+//			url: "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=1", 
+//
 module.exports = NodeHelper.create({
-        
-  start: function () {
-    console.log('Starting node helper for: ' + this.name)
+      start: function () {
+        console.log('Starting node helper for: ' + this.name)
   },
   getTides: function(key) {
     var self = this
     var options = {
       method: 'GET',
-      url: url,
+      url: "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=3",
 //        'x-rapidapi-key': key
       headers: {
 			  'Host': 'admiraltyapi.azure-api.net',
-			  'Ocp-Apim-Subscription-Key':'515a75514aee4a07837db6d60bc10e41',
+			  'Ocp-Apim-Subscription-Key': key,
 		    'Content-Type': 'application/json'
 		    		}
       
