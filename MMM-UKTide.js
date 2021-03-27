@@ -1,419 +1,323 @@
- /* Magic Mirror
- * Module: NewsFeed
+/* Magic Mirror
+ * Module: MMM-UKTide = UK Tides
  *
- * By Michael Teeuw https://michaelteeuw.nl
- * MIT Licensed.
+ * By Simon Cowdell
+ * MIT License
  */
+
 Module.register("MMM-UKTide", {
-	// Default module config.
-	defaults: {
-		feeds: [
-			{
-				title: "New York Times",
-				url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-				encoding: "UTF-8" //ISO-8859-1
-			}
-		],
-		showSourceTitle: true,
-		showPublishDate: true,
-		broadcastNewsFeeds: true,
-		broadcastNewsUpdates: true,
-		showDescription: false,
-		wrapTitle: true,
-		wrapDescription: true,
-		truncDescription: true,
-		lengthDescription: 400,
-		hideLoading: false,
-		reloadInterval: 5 * 60 * 1000, // every 5 minutes
-		updateInterval: 10 * 1000,
-		animationSpeed: 2.5 * 1000,
-		maxNewsItems: 0, // 0 for unlimited
-		ignoreOldItems: false,
-		ignoreOlderThan: 24 * 60 * 60 * 1000, // 1 day
-		removeStartTags: "",
-		removeEndTags: "",
-		startTags: [],
-		endTags: [],
-		prohibitedWords: [],
-		scrollLength: 500,
-		logFeedWarnings: false
+
+    // Module config defaults.
+    defaults: {
+        apiKey: "",                     // admiralty
+        mode: "static",                 // static or rotating
+        timeFormat: "",
+        height: "m",                    // ft = feet, m = meters for tide height
+        LowText: "Low",                 // Low tide text. Whatever you want or nothing ""
+        HighText: "High",               // High tide text. Whatever you want or nothing ""
+        useHeader: false,               // False if you don't want a header
+        header: "",                     // Change in config file. useHeader must be true
+        maxWidth: "300px",
+        animationSpeed: 3000,           // fade speed
+        initialLoadDelay: 3250,
+        retryDelay: 2500,
+        rotateInterval: 30 * 1000,      // seconds
+        updateInterval: 60 * 60 * 1000, // Equals 720 of 1000 free calls a month
+    },
+
+    getStyles: function() {
+        return ["MMM-UKTide.css"];
+    },
+
+    getScripts: function(){
+		return ['moment.js']; // needed for MM versions without moment
 	},
 
-	// Define required scripts.
-	getScripts: function () {
-		return ["moment.js"];
-	},
+    start: function() {
+        Log.info("Starting module: " + this.name);
 
-	// Define required translations.
-	getTranslations: function () {
-		// The translations for the default modules are defined in the core translation files.
-		// Therefor we can just return false. Otherwise we should have returned a dictionary.
-		// If you're trying to build your own module including translations, check out the documentation.
-		return false;
-	},
 
-	// Define start sequence.
-	start: function () {
-		Log.info("Starting module: " + this.name);
+        //  Set locale.
+//        this.url = "https://www.worldtides.info/api?extremes&lat=" + this.config.lat + "&lon=" + this.config.lon + "&length=604800&key=" + this.config.apiKey;
+	this.url = "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=1";
+        this.tides = [];
+        this.activeItem = 0;
+        this.rotateInterval = null;
+        this.scheduleUpdate();
+    },
 
-		// Set locale.
-		moment.locale(config.language);
 
-		this.newsItems = [];
-		this.loaded = false;
-		this.activeItem = 0;
-		this.scrollPosition = 0;
+    getDom: function() {
 
-		this.registerFeeds();
+		// create wrapper
+        var wrapper = document.createElement("div");
+        wrapper.className = "wrapper";
+        wrapper.style.maxWidth = this.config.maxWidth;
 
-		this.isShowingDescription = this.config.showDescription;
-	},
+		// Loading
+        if (!this.loaded) {
+            wrapper.innerHTML = "First the tide rushes in . . .";
+            wrapper.classList.add("bright", "light", "small");
+            return wrapper;
+        }
 
-	// Override socket notification handler.
-	socketNotificationReceived: function (notification, payload) {
-		if (notification === "NEWS_ITEMS") {
-			this.generateFeed(payload);
+		// header
+        if (this.config.useHeader != false) {
+            var header = document.createElement("header");
+            header.classList.add("xsmall", "bright", "header");
+            header.innerHTML = this.config.header;
+            wrapper.appendChild(header);
+        }
 
-			if (!this.loaded) {
-				this.scheduleUpdateInterval();
-			}
+///////////////////  Suggested by @yawns. ////////////////////
 
-			this.loaded = true;
-		}
-	},
+//////////////////  Almost got there  ////////////////////////
 
-	// Override dom generator.
-	getDom: function () {
-		const wrapper = document.createElement("div");
+//////////////////  Corrected by Cowboysdude (GURU) //////////
 
-		if (this.config.feedUrl) {
-			wrapper.className = "small bright";
-			wrapper.innerHTML = this.translate("MODULE_CONFIG_CHANGED", { MODULE_NAME: "MMM-UKTide" });
-			return wrapper;
-		}
+///////////// First - IF the rotating data ///////////////////
 
-		if (this.activeItem >= this.newsItems.length) {
-			this.activeItem = 0;
-		}
+		if(this.config.mode != "static"){
 
-		if (this.newsItems.length > 0) {
-			// this.config.showFullArticle is a run-time configuration, triggered by optional notifications
-			if (!this.config.showFullArticle && (this.config.showSourceTitle || this.config.showPublishDate)) {
-				const sourceAndTimestamp = document.createElement("div");
-				sourceAndTimestamp.className = "newsfeed-source light small dimmed";
+            // Rotating my data
+            var tides = this.tides; // must also be defined in the else portion of statement
 
-				if (this.config.showSourceTitle && this.newsItems[this.activeItem].sourceTitle !== "") {
-					sourceAndTimestamp.innerHTML = this.newsItems[this.activeItem].sourceTitle;
-				}
-				if (this.config.showSourceTitle && this.newsItems[this.activeItem].sourceTitle !== "" && this.config.showPublishDate) {
-					sourceAndTimestamp.innerHTML += ", ";
-				}
-				if (this.config.showPublishDate) {
-					sourceAndTimestamp.innerHTML += moment(new Date(this.newsItems[this.activeItem].pubdate)).fromNow();
-				}
-				if ((this.config.showSourceTitle && this.newsItems[this.activeItem].sourceTitle !== "") || this.config.showPublishDate) {
-					sourceAndTimestamp.innerHTML += ":";
-				}
+            var keys = Object.keys(this.tides);
+        if (keys.length > 0) {
+            if (this.activeItem >= keys.length) {
+                this.activeItem = 0;
+            }
+            var tides = this.tides[keys[this.activeItem]];
 
-				wrapper.appendChild(sourceAndTimestamp);
-			}
+            //	console.log(tides); // for checking
 
-			//Remove selected tags from the beginning of rss feed items (title or description)
+            var top = document.createElement("div");
+            top.classList.add("list-row");
 
-			if (this.config.removeStartTags === "title" || this.config.removeStartTags === "both") {
-				for (let f = 0; f < this.config.startTags.length; f++) {
-					if (this.newsItems[this.activeItem].title.slice(0, this.config.startTags[f].length) === this.config.startTags[f]) {
-						this.newsItems[this.activeItem].title = this.newsItems[this.activeItem].title.slice(this.config.startTags[f].length, this.newsItems[this.activeItem].title.length);
-					}
-				}
-			}
+            // Weekday and date adjusts to users local time and format // Stackoverflow.com
+            var dt = document.createElement("div");
+            dt.classList.add("small", "bright", "dt");
+            //	console.log(tides) // for checking
+            dt.innerHTML = moment.utc(tides.dt * 1000).local().format("dddd, MMM DD, YYYY"); // Stackoverflow.com
+            wrapper.appendChild(dt);
 
-			if (this.config.removeStartTags === "description" || this.config.removeStartTags === "both") {
-				if (this.isShowingDescription) {
-					for (let f = 0; f < this.config.startTags.length; f++) {
-						if (this.newsItems[this.activeItem].description.slice(0, this.config.startTags[f].length) === this.config.startTags[f]) {
-							this.newsItems[this.activeItem].description = this.newsItems[this.activeItem].description.slice(this.config.startTags[f].length, this.newsItems[this.activeItem].description.length);
-						}
-					}
-				}
-			}
 
-			//Remove selected tags from the end of rss feed items (title or description)
+            // type = High or Low tide, icon AND time
+            var type = document.createElement("div");
+            type.classList.add("small", "bright", "type");
+        if (tides.type == "Low") {
+                type.innerHTML = tides.type + " tide" + " &nbsp " + " <img class = img src=modules/MMM-SORT/images/low.png width=10% height=10%>" + " &nbsp " + moment.utc(tides.dt * 1000).local().format(this.config.timeFormat);
+        } else {
+                type.innerHTML = tides.type + " tide" + " &nbsp " + " <img class = img src=modules/MMM-SORT/images/high.png width=10% height=10%>" + " &nbsp " + moment.utc(tides.dt * 1000).local().format(this.config.timeFormat);
+            }
+            wrapper.appendChild(type);
 
-			if (this.config.removeEndTags) {
-				for (let f = 0; f < this.config.endTags.length; f++) {
-					if (this.newsItems[this.activeItem].title.slice(-this.config.endTags[f].length) === this.config.endTags[f]) {
-						this.newsItems[this.activeItem].title = this.newsItems[this.activeItem].title.slice(0, -this.config.endTags[f].length);
-					}
-				}
 
-				if (this.isShowingDescription) {
-					for (let f = 0; f < this.config.endTags.length; f++) {
-						if (this.newsItems[this.activeItem].description.slice(-this.config.endTags[f].length) === this.config.endTags[f]) {
-							this.newsItems[this.activeItem].description = this.newsItems[this.activeItem].description.slice(0, -this.config.endTags[f].length);
-						}
-					}
-				}
-			}
+            // height of tide variance (round to two decimals for ft, m is three decimals)
+            var height = document.createElement("div");
+            height.classList.add("small", "bright", "height");
+        if (this.config.height == "ft") {
+                height.innerHTML = "Tidal variance is " + Number(Math.round(tides.height * 3.28 + 'e2') + 'e-2') + " ft"; // https://jsfiddle.net/k5tpq3pd/36/
+        } else {
+                height.innerHTML = "Tidal variance is " + tides.height + " meters";
+            }
+            wrapper.appendChild(height);
 
-			if (!this.config.showFullArticle) {
-				const title = document.createElement("div");
-				title.className = "newsfeed-title bright medium light" + (!this.config.wrapTitle ? " no-wrap" : "");
-				title.innerHTML = this.newsItems[this.activeItem].title;
-				wrapper.appendChild(title);
-			}
 
-			if (this.isShowingDescription) {
-				const description = document.createElement("div");
-				description.className = "newsfeed-desc small light" + (!this.config.wrapDescription ? " no-wrap" : "");
-				const txtDesc = this.newsItems[this.activeItem].description;
-				description.innerHTML = this.config.truncDescription ? (txtDesc.length > this.config.lengthDescription ? txtDesc.substring(0, this.config.lengthDescription) + "..." : txtDesc) : txtDesc;
-				wrapper.appendChild(description);
-			}
+            // Tide station nearest to config lat and lon
+            var station = document.createElement("div");
+            station.classList.add("small", "bright", "station");
+            station.innerHTML = this.station;
+            wrapper.appendChild(station);
 
-			if (this.config.showFullArticle) {
-				const fullArticle = document.createElement("iframe");
-				fullArticle.className = "";
-				fullArticle.style.width = "100vw";
-				// very large height value to allow scrolling
-				fullArticle.height = "3000";
-				fullArticle.style.height = "3000";
-				fullArticle.style.top = "0";
-				fullArticle.style.left = "0";
-				fullArticle.style.border = "none";
-				fullArticle.src = this.getActiveItemURL();
-				fullArticle.style.zIndex = 1;
-				wrapper.appendChild(fullArticle);
-			}
 
-			if (this.config.hideLoading) {
-				this.show();
-			}
+            // lat and lon of tide station nearest to config lat and lon
+            var latLon = document.createElement("div");
+            latLon.classList.add("small", "bright", "latLon");
+            latLon.innerHTML = "Tide station " + this.respLat + ", " + this.respLon;
+            wrapper.appendChild(latLon);
+
+        }
+
+        ////////////////// ELSE - the static data //////////////
+
 		} else {
-			if (this.config.hideLoading) {
-				this.hide();
-			} else {
-				wrapper.innerHTML = this.translate("LOADING");
-				wrapper.className = "small dimmed";
-			}
-		}
 
-		return wrapper;
-	},
+		////// MAKE CONFIG OPTIONS FOR ICON AND LOW?HIGH  ///////////
 
-	getActiveItemURL: function () {
-		return typeof this.newsItems[this.activeItem].url === "string" ? this.newsItems[this.activeItem].url : this.newsItems[this.activeItem].url.href;
-	},
 
-	/**
-	 * Registers the feeds to be used by the backend.
-	 */
-	registerFeeds: function () {
-		for (var f in this.config.feeds) {
-			var feed = this.config.feeds[f];
-			this.sendSocketNotification("ADD_FEED", {
-				feed: feed,
-				config: this.config
-			});
-		}
-	},
+		var tides = this.tides;  // need to define tides again for "else" section....
 
-	/**
-	 * Generate an ordered list of items for this configured module.
-	 *
-	 * @param {object} feeds An object with feeds returned by the node helper.
-	 */
-	generateFeed: function (feeds) {
-		var newsItems = [];
-		for (var feed in feeds) {
-			var feedItems = feeds[feed];
-			if (this.subscribedToFeed(feed)) {
-				for (var i in feedItems) {
-					var item = feedItems[i];
-					item.sourceTitle = this.titleForFeed(feed);
-					if (!(this.config.ignoreOldItems && Date.now() - new Date(item.pubdate) > this.config.ignoreOlderThan)) {
-						newsItems.push(item);
-					}
-				}
-			}
-		}
-		newsItems.sort(function (a, b) {
-			var dateA = new Date(a.pubdate);
-			var dateB = new Date(b.pubdate);
-			return dateB - dateA;
-		});
-		if (this.config.maxNewsItems > 0) {
-			newsItems = newsItems.slice(0, this.config.maxNewsItems);
-		}
+		var top = document.createElement("div");
+        top.classList.add("list-row");
 
-		if (this.config.prohibitedWords.length > 0) {
-			newsItems = newsItems.filter(function (value) {
-				for (var i = 0; i < this.config.prohibitedWords.length; i++) {
-					if (value["title"].toLowerCase().indexOf(this.config.prohibitedWords[i].toLowerCase()) > -1) {
-						return false;
-					}
-				}
-				return true;
-			}, this);
-		}
 
-		// get updated news items and broadcast them
-		var updatedItems = [];
-		newsItems.forEach((value) => {
-			if (this.newsItems.findIndex((value1) => value1 === value) === -1) {
-				// Add item to updated items list
-				updatedItems.push(value);
-			}
-		});
+        // place
+        var place = document.createElement("div");
+        place.classList.add("small", "bright", "place");
+        place.innerHTML = this.station;
+        top.appendChild(place);
 
-		// check if updated items exist, if so and if we should broadcast these updates, then lets do so
-		if (this.config.broadcastNewsUpdates && updatedItems.length > 0) {
-			this.sendNotification("NEWS_FEED_UPDATE", { items: updatedItems });
-		}
 
-		this.newsItems = newsItems;
-	},
+        // Tide #1 = High/Low icon, day of the week, time of tide (am/pm)
+        var date = document.createElement("div");
 
-	/**
-	 * Check if this module is configured to show this feed.
-	 *
-	 * @param {string} feedUrl Url of the feed to check.
-	 * @returns {boolean} True if it is subscribed, false otherwise
-	 */
-	subscribedToFeed: function (feedUrl) {
-		for (var f in this.config.feeds) {
-			var feed = this.config.feeds[f];
-			if (feed.url === feedUrl) {
-				return true;
-			}
-		}
-		return false;
-	},
 
-	/**
-	 * Returns title for the specific feed url.
-	 *
-	 * @param {string} feedUrl Url of the feed
-	 * @returns {string} The title of the feed
-	 */
-	titleForFeed: function (feedUrl) {
-		for (var f in this.config.feeds) {
-			var feed = this.config.feeds[f];
-			if (feed.url === feedUrl) {
-				return feed.title || "";
-			}
-		}
-		return "";
-	},
+		var LowText = this.config.LowText;
+		var HighText = this.config.HighText;
 
-	/**
-	 * Schedule visual update.
-	 */
-	scheduleUpdateInterval: function () {
-		var self = this;
 
-		self.updateDom(self.config.animationSpeed);
-
-		// Broadcast NewsFeed if needed
-		if (self.config.broadcastNewsFeeds) {
-			self.sendNotification("NEWS_FEED", { items: self.newsItems });
-		}
-
-		this.timer = setInterval(function () {
-			self.activeItem++;
-			self.updateDom(self.config.animationSpeed);
-
-			// Broadcast NewsFeed if needed
-			if (self.config.broadcastNewsFeeds) {
-				self.sendNotification("NEWS_FEED", { items: self.newsItems });
-			}
-		}, this.config.updateInterval);
-	},
-
-	resetDescrOrFullArticleAndTimer: function () {
-		this.isShowingDescription = this.config.showDescription;
-		this.config.showFullArticle = false;
-		this.scrollPosition = 0;
-		// reset bottom bar alignment
-		document.getElementsByClassName("region bottom bar")[0].style.bottom = "0";
-		document.getElementsByClassName("region bottom bar")[0].style.top = "inherit";
-		if (!this.timer) {
-			this.scheduleUpdateInterval();
-		}
-	},
-
-	notificationReceived: function (notification, payload, sender) {
-		const before = this.activeItem;
-		if (notification === "ARTICLE_NEXT") {
-			this.activeItem++;
-			if (this.activeItem >= this.newsItems.length) {
-				this.activeItem = 0;
-			}
-			this.resetDescrOrFullArticleAndTimer();
-			Log.debug(this.name + " - going from article #" + before + " to #" + this.activeItem + " (of " + this.newsItems.length + ")");
-			this.updateDom(100);
-		} else if (notification === "ARTICLE_PREVIOUS") {
-			this.activeItem--;
-			if (this.activeItem < 0) {
-				this.activeItem = this.newsItems.length - 1;
-			}
-			this.resetDescrOrFullArticleAndTimer();
-			Log.debug(this.name + " - going from article #" + before + " to #" + this.activeItem + " (of " + this.newsItems.length + ")");
-			this.updateDom(100);
-		}
-		// if "more details" is received the first time: show article summary, on second time show full article
-		else if (notification === "ARTICLE_MORE_DETAILS") {
-			// full article is already showing, so scrolling down
-			if (this.config.showFullArticle === true) {
-				this.scrollPosition += this.config.scrollLength;
-				window.scrollTo(0, this.scrollPosition);
-				Log.debug(this.name + " - scrolling down");
-				Log.debug(this.name + " - ARTICLE_MORE_DETAILS, scroll position: " + this.config.scrollLength);
-			} else {
-				this.showFullArticle();
-			}
-		} else if (notification === "ARTICLE_SCROLL_UP") {
-			if (this.config.showFullArticle === true) {
-				this.scrollPosition -= this.config.scrollLength;
-				window.scrollTo(0, this.scrollPosition);
-				Log.debug(this.name + " - scrolling up");
-				Log.debug(this.name + " - ARTICLE_SCROLL_UP, scroll position: " + this.config.scrollLength);
-			}
-		} else if (notification === "ARTICLE_LESS_DETAILS") {
-			this.resetDescrOrFullArticleAndTimer();
-			Log.debug(this.name + " - showing only article titles again");
-			this.updateDom(100);
-		} else if (notification === "ARTICLE_TOGGLE_FULL") {
-			if (this.config.showFullArticle) {
-				this.activeItem++;
-				this.resetDescrOrFullArticleAndTimer();
-			} else {
-				this.showFullArticle();
-			}
-		} else if (notification === "ARTICLE_INFO_REQUEST") {
-			this.sendNotification("ARTICLE_INFO_RESPONSE", {
-				title: this.newsItems[this.activeItem].title,
-				source: this.newsItems[this.activeItem].sourceTitle,
-				date: this.newsItems[this.activeItem].pubdate,
-				desc: this.newsItems[this.activeItem].description,
-				url: this.getActiveItemURL()
-			});
-		}
-	},
-
-	showFullArticle: function () {
-		this.isShowingDescription = !this.isShowingDescription;
-		this.config.showFullArticle = !this.isShowingDescription;
-		// make bottom bar align to top to allow scrolling
-		if (this.config.showFullArticle === true) {
-			document.getElementsByClassName("region bottom bar")[0].style.bottom = "inherit";
-			document.getElementsByClassName("region bottom bar")[0].style.top = "-90px";
-		}
-		clearInterval(this.timer);
-		this.timer = null;
-		Log.debug(this.name + " - showing " + this.isShowingDescription ? "article description" : "full article");
-		this.updateDom(100);
+		// IF time NOW is later than epoch time of tide, dim this tide
+		if (Date.now() > (tides[0].dt * 1000) ) {
+				 date.classList.add("xsmall", "dimmed", "date");
+		} else { date.classList.add("xsmall", "bright", "date");
 	}
+		if (tides[0].type == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[0].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[0].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>"; // Stackoverflow.com
+        } else {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[0].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[0].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+
+		top.appendChild(date);
+
+
+
+		// Tide #2 = High/Low icon, day of the week, time of tide (am/pm)
+        var date2 = document.createElement("div");
+        date2.classList.add("xsmall", "bright", "date2");
+		if (tides[1].type == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[1].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[1].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        } else {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[1].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[1].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+		top.appendChild(date2);
+
+
+		// Tide #3 = High/Low icon, day of the week, time of tide (am/pm)
+        var date = document.createElement("div");
+        date.classList.add("xsmall", "bright", "date");
+		if (tides[2].type == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[2].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[2].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        } else {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[2].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[2].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+		top.appendChild(date);
+
+
+		// Tide #4 = High/Low icon, day of the week, time of tide (am/pm)
+        var date2 = document.createElement("div");
+        date2.classList.add("xsmall", "bright", "date2");
+		if (tides[3].type == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[3].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[3].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        } else {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[3].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[3].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+		top.appendChild(date2);
+
+
+		// Tide #5 = High/Low icon, day of the week, time of tide (am/pm)
+        var date = document.createElement("div");
+        date.classList.add("xsmall", "bright", "date");
+		if (tides[4].type == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[4].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[4].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        } else {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[4].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[4].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+		top.appendChild(date);
+
+
+		// Tide #6 = High/Low icon, day of the week, time of tide (am/pm)
+        var date2 = document.createElement("div");
+        date2.classList.add("xsmall", "bright", "date2");
+		if (tides[5].type == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[5].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[5].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        } else {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[5].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[5].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+		top.appendChild(date2);
+
+
+		// Tide #7 = High/Low icon, day of the week, time of tide (am/pm)
+        var date = document.createElement("div");
+        date.classList.add("xsmall", "bright", "date");
+		if (tides[6].type == "LowWater") {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[6].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[6].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        } else {
+            date.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[6].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[6].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+		top.appendChild(date);
+
+
+		// Tide #8 = High/Low icon, day of the week, time of tide (am/pm)
+        var date2 = document.createElement("div");
+        date2.classList.add("xsmall", "bright", "date2");
+		if (tides[7].type == "LowWater") {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/low.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[7].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[7].dt * 1000).local().format(this.config.timeFormat) + " <font color=#FCFF00>" + " &nbsp " + LowText + "</font>" ; // Stackoverflow.com
+        } else {
+            date2.innerHTML = "<img class = img src=modules/MMM-UKTide/images/high.png width=12% height=12%>" + " &nbsp " + moment.utc(tides[7].dt * 1000).local().format("ddd") + " &nbsp" + moment.utc(tides[7].dt * 1000).local().format(this.config.timeFormat) + " <font color=#f3172d>" + " &nbsp " + HighText + "</font>"; // Stackoverflow.com
+        }
+		top.appendChild(date2);
+
+        wrapper.appendChild(top);
+
+		} // closes else
+
+        return wrapper;
+    },
+
+
+    /////  Add this function to the modules you want to control with voice //////
+
+    notificationReceived: function(notification, payload) {
+        if (notification === 'HIDE_TIDES') {
+            this.hide(1000);
+            this.updateDom(300);
+        }  else if (notification === 'SHOW_TIDES') {
+            this.show(1000);
+            this.updateDom(300);
+        }
+
+    },
+
+
+    processTides: function(data) {
+//        this.respLat = data.responseLat; // before extremes object
+//        this.respLon = data.responseLon; // before extremes object
+//        this.station = data.station; // before extremes object
+        this.tides = data; // Object
+    	console.log(this.tides); // for checking
+        this.loaded = true;
+
+    },
+
+    scheduleCarousel: function() {
+        console.log("Carousel of Tides fucktion!");
+        this.rotateInterval = setInterval(() => {
+            this.activeItem++;
+            this.updateDom(this.config.animationSpeed);
+        }, this.config.rotateInterval);
+    },
+
+    scheduleUpdate: function() {
+        setInterval(() => {
+            this.getTides();
+        }, this.config.updateInterval);
+        this.getTides(this.config.initialLoadDelay);
+    },
+
+    getTides: function() {
+        this.sendSocketNotification('GET_TIDES', this.url);
+    },
+
+    socketNotificationReceived: function(notification, payload) {
+        if (notification === "TIDES_RESULT") {
+            this.processTides(payload);
+            if (this.config.mode != 'static' && this.rotateInterval == null) {   // if you want static it will return false and will not try to run
+            //these statements BOTH have to be true to run... if one is false the other true it will not run. Huge props to Cowboysdude for this!!!
+                this.scheduleCarousel();
+            }
+            this.updateDom(this.config.animationSpeed);
+        }
+        this.updateDom(this.config.initialLoadDelay);
+    },
 });
-
-
