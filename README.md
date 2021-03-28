@@ -1,13 +1,19 @@
-Using MMM SORT as a basis for a tide app
-Installation
+## MMM-UKTide
+An update to the current (2020) tides apps available using MMM-SORT and MMM-COVID19 as a basis for a tide app
+
+## Installation
 In your terminal, go to your MagicMirror's Module folder:
 
+```
 cd ~/MagicMirror/modules
+```
 Clone this repository:
-
+```
 git clone https://github.com/Captsi/MMM-UKTide.git
+```
+## Configuration
 Add the module to the modules array in the config/config.js file:
-
+```
 {
 	disabled: false,
 	module: "MMM-UKTide",
@@ -28,5 +34,6 @@ Add the module to the modules array in the config/config.js file:
 		rotateInterval: 20 * 1000,  // seconds (When mode: is rotating)
 	}
 },
+```
 
  
