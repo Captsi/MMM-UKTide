@@ -11,7 +11,7 @@ Clone this repository:
 ```
 git clone https://github.com/Captsi/MMM-UKTide.git
 ```
-Go to https://admiraltyapi.portal.azure-api.net/products/uk-tidal-api and create an account. You may find that once you've created the account it's easier to click on the link above a second time to take you to the correct page. You need to subscribe (free) to the UK Tidal API and make a note of the subscription key, which will be put in the main MagiMirror config file.
+Go to https://admiraltyapi.portal.azure-api.net/products/uk-tidal-api and create an account. You may find that once you've created the account it's easier to click on the link above a second time to take you to the correct page. You need to subscribe (free) to the UK Tidal API and make a note of the subscription key, which will be put in the main MagiMirror config file. You can also visit the "Stations" API in order to get the correct StationID for your location.
 
 ## Configuration
 Add the module to the modules array in the config/config.js file:
@@ -22,6 +22,7 @@ Add the module to the modules array in the config/config.js file:
 	position: "top_left",
 	config: {
 		AdmiraltyKey: "YOUR API KEY",// free from Admiralty
+		StationID: "0068",          // Station ID of tidal information
 		mode: "static",             // static or rotating
                 timeFormat: "  h:mm a",     // use standard time formatting (" HH:mm" for 24 hour)
 		LowText: "Low",             // Low tide text. Whatever you want or nothing "",
