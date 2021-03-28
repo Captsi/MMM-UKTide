@@ -1,5 +1,5 @@
 ## MMM-UKTide
-An update to the current (2020) tides apps available using MMM-SORT and MMM-COVID19 as a basis for a tide app. The change was needed as worldtides no longer offered a free API and as a result other sources of information were sought. This module uses the UK Admiralty developers portal from the UK hydrographoc office, which offers free accounts. 
+An update to the current (2020) tides apps available using MMM-SORT and MMM-COVID19 as a basis for a tide app. The change was needed as worldtides no longer offered a free API and as a result other sources of information were sought. This module uses the UK Admiralty developers portal from the UK hydrographic office, which offers free accounts. 
 
 ## Installation
 In your terminal, go to your MagicMirror's Module folder:
@@ -36,5 +36,6 @@ Add the module to the modules array in the config/config.js file:
 	}
 },
 ```
-
+## Custom CSS
+You may want to edit your custom CSS to get the formatting the way you want it. I made sure the left hand areas were left justified, just to line things up, and made the text 24 point, but everyone will want something different. Have a good time experimenting.
  
