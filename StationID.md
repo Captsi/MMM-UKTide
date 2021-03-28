@@ -53,3 +53,4 @@
 0084a	Sovereign Harbour
 0085	Hastings
 ```	
+From https://www.bbc.co.uk/weather/coast-and-sea/tide-tables/8 then bashed around in excel.
