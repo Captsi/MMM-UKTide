@@ -1,4 +1,5 @@
 ## Sample list of Tidal Station ID's
+```
 0031	Chesil Cove
 0033	Portland
 0034	Lulworth Cove
@@ -51,10 +52,4 @@
 0084	Eastbourne
 0084a	Sovereign Harbour
 0085	Hastings
-	
-	
-	
-	
-	
-	
-	
+```	
