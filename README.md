@@ -26,7 +26,9 @@ Add the module to the modules array in the config/config.js file:
 		mode: "static",             // static or rotating
                 timeFormat: "  h:mm a",     // use standard time formatting (" HH:mm" for 24 hour)
 		LowText: "Low",             // Low tide text. Whatever you want or nothing "",
+		LowColour: "#4BE000",       // Pick a HEX colour
 		HighText: "High",           // High tide text. Whatever you want or nothing "",
+		HighColour: "#A3DDFF",      // Pick a HEX colour
 		height: "m",                // ft = feet, m = meters (When mode: is rotating)
 		useHeader: false,           // false if you don't want a header      
 		header: "",                 // Change in config file. useHeader must be true
