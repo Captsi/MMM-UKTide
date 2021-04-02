@@ -34,6 +34,7 @@ Add the module to the modules array in the config/config.js file:
 		HighColour: "#A3DDFF",      // Pick a HEX colour
 		height: "m",                // ft = feet, m = meters (When mode: is rotating)
 		useHeader: false,           // false if you don't want a header      
+		LinesToShow: 6,
 		header: "",                 // Change in config file. useHeader must be true
 		maxWidth: "380px",
 		animationSpeed: 3000,       // fade speed
@@ -41,6 +42,9 @@ Add the module to the modules array in the config/config.js file:
 	}
 },
 ```
+
+## Functions
+The tides will show the next "LinesToShow" tides from midnight. As the tide passes it will dim in intensity. You can change the text of the tidal event, and the colour of that text. 
+
 ## Custom CSS
 You may want to edit your custom CSS to get the formatting the way you want it. I made sure the left hand areas were left justified, just to line things up, and made the text 24 point, but everyone will want something different. Have a good time experimenting.
- 
