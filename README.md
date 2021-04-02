@@ -14,7 +14,7 @@ git clone https://github.com/Captsi/MMM-UKTide.git
 Go to https://admiraltyapi.portal.azure-api.net/products/uk-tidal-api and create an account. You may find that once you've created the account it's easier to click on the link above a second time to take you to the correct page. You need to subscribe (free) to the UK Tidal API and make a note of the subscription key, which will be put in the main MagiMirror config file. You can also visit the "Stations" API in order to get the correct StationID for your location. A sample list of StationIDs is shown in the StationID.md file in the git.
 
 ## Screenshot
-|![Example: Chichester Harbour Tide](UKTide-screenshot.png)<br>Chichester Harbour times|
+|![Example: Chichester Harbour Tide](UKTide-screenshot.png)<br>*Chichester Harbour times*
 
 ## Configuration
 Add the module to the modules array in the config/config.js file:
