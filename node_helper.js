@@ -17,15 +17,19 @@ module.exports = NodeHelper.create({
       start: function () {
         console.log('Starting node helper for: ' + this.name)
   },
-  getTides: function(key) {
-    var self = this
+  getTides: function() {
+    var self = this;
+    var myurl= "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/" + this.config.StationID + "/TidalEvents?duration=" + this.config.Duration ;
+    
+  //  "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=3"
     var options = {
       method: 'GET',
-      url: "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=3",
+      url: myurl,
+//      https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=3",
 //        'x-rapidapi-key': key
       headers: {
 			  'Host': 'admiraltyapi.azure-api.net',
-			  'Ocp-Apim-Subscription-Key': key,
+			  'Ocp-Apim-Subscription-Key': this.config.AdmiraltyKey,
 		    'Content-Type': 'application/json'
 		    		}
       
@@ -33,7 +37,7 @@ module.exports = NodeHelper.create({
     request(options, function (error, response, body) {
       if (!error && response.statusCode == 200) {
         var result = JSON.parse(body)
-        console.log(response.statusCode + result);    		// uncomment to see in terminal
+  //      console.log(response.statusCode + result);    		// uncomment to see in terminal
          self.sendSocketNotification('TIDAL_RESULT', result)
       }
     })
@@ -42,7 +46,8 @@ module.exports = NodeHelper.create({
   //Subclass socketNotificationReceived received.
   socketNotificationReceived: function(notification, payload) {
     if (notification === 'GET_TIDES') {
-      this.getTides(payload)
+      this.config = payload
+      this.getTides()
     }
   }
   
