@@ -108,7 +108,7 @@ Module.register("MMM-UKTide", {
 		var TableIcon = document.createElement("img");
 		TableIcon.className = "icon";
 		TableIcon.src = "";
-		//tableHeading.innerHTML = "Tidevann";
+		
 		tableHeading.appendChild(TableIcon);
 		wrapper.appendChild(tableHeading);
 
@@ -139,7 +139,7 @@ Module.register("MMM-UKTide", {
 				headerCell.innerHTML = "Height";
 				row.appendChild(headerCell);
 		} else {};
-		//Log.log(waterValue.length);
+		
 		var tides = this.tides;
 		var TableLinesToShow = Math.min(this.config.LinesToShow, tides.length);
 		if(tides.length > 0) {
@@ -151,7 +151,7 @@ Module.register("MMM-UKTide", {
 			
 				var HLSymbolWrapper = document.createElement("td");
 				HLSymbolWrapper.className = "small";
-				//symbolWrapper.className = "Mytd";
+				
 				var symbol = document.createElement("span");
 				var image = document.createElement("img");
 				image.className = "tag";
@@ -178,11 +178,10 @@ Module.register("MMM-UKTide", {
 				var HeightWrapper = document.createElement("td");
 				HeightWrapper.className = "small";
 				HeightWrapper.innerHTML = "(" + tides[i].Height.toFixed(2) + "m)";
-				if (Date.now() > Date.parse(tides[i].DateTime) ) {
-					HLTextWrapper.classList.add("small", "dimmed", "date");
-					HeightWrapper.classList.add("small", "dimmed", "date");
-					timeWrapper.classList.add("small", "dimmed", "date");
-		   } else { eventWrapper.classList.add("small", "bright", "date");}
+				var now = new Date
+				if (Date.now() > Date.parse(tides[i].DateTime)  - now.getTimezoneOffset()*60 *1000) {
+					eventWrapper.className = "dimmed";
+				} else { eventWrapper.classList.add("small", "bright", "date");}
 				eventWrapper.appendChild(HLSymbolWrapper);
 				eventWrapper.appendChild(timeWrapper);
 				eventWrapper.appendChild(HLTextWrapper);
