@@ -11,7 +11,8 @@ Module.register("MMM-UKTide", {
     defaults: {
         AdmiraltyKey: "",
         StationID: "0068",              // Chichester harbour entrance
-        Duration: 3,
+        AdmiraltyURL: "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/",
+	Duration: 3,
         mode: "static",                 // static or rotating
         timeFormat: "",
         height: "m",                    // ft = feet, m = meters for tide height
@@ -43,9 +44,6 @@ Module.register("MMM-UKTide", {
     start: function() {
         Log.info("Starting module: " + this.name);
         this.getInfo()
-
-        //  Set locale.
-	    this.url = "https://admiraltyapi.azure-api.net/uktidalapi/api/V1/Stations/0068/TidalEvents?duration=3";
         this.tides = [];
         this.activeItem = 0;
         this.rotateInterval = null;
