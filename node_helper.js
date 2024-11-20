@@ -4,8 +4,8 @@
  * Node Helper: MMM-TidesUK
  *
  * By Simon Cowdell
+ * Thanks to KristjanESPERANTO for the code from MMM-Quiz
  * MIT Licensed.
- * byCountryUrl
  * Rewrite and simplification to avoid request.
  */
 
